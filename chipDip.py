@@ -22,15 +22,17 @@ import Adafruit_CharLCD as LCD
 import Adafruit_GPIO.MCP230xx as MCP
 import Adafruit_GPIO as GPIO
 
-# Constants:
+
 mcp           = MCP.MCP23008()
 gpio          = GPIO.get_platform_gpio()
+
+# Constants:
 UP            = "XIO-P3"
 DOWN	      = "XIO-P4"
 LEFT	      = "XIO-P5"
 RIGHT	      = "XIO-P6"
 SELECT 	      = "XIO-P7"
-bn            = [UP, DOWN, LEFT, RIGHT, SELECT]
+BUTTONS       = [UP, DOWN, LEFT, RIGHT, SELECT]
 DEBUG         = True
 RGB_LCD       = False       # Set to 'True' if using color backlit LCD
 HALT_ON_EXIT  = False        # Set to 'True' to shut down system when exiting
@@ -107,8 +109,8 @@ def clean_exit():              # Exit handler tries to leave LCD in a nice state
     if DEBUG:
         print "cleanExit"
 
-    for i in range(len(bn)):
-        gpio.remove_event_detect(bn[i])
+    for i in range(len(BUTTONS)):
+        gpio.remove_event_detect(BUTTONS[i])
 
     gpio.cleanup()
     lcd.clear()
@@ -344,8 +346,8 @@ def btn_select_pressed(self):
 atexit.register(clean_exit)
 
 # Initialize GPIO for CHIP
-for i in range(len(bn)):
-    gpio.setup( bn[i], GPIO.IN)
+for i in range(len(BUTTONS)):
+    gpio.setup(BUTTONS[i], GPIO.IN)
 
 gpio.add_event_detect(UP, GPIO.FALLING, btn_up_pressed, 350)
 gpio.add_event_detect(DOWN, GPIO.FALLING, btn_down_pressed, 350)
