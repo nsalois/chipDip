@@ -17,16 +17,11 @@
 # http://www.adafruit.com/products/1115 Blue & White 16x2 LCD + Keypad
 
 import atexit, pexpect, pickle, socket, time, os, subprocess
-from Adafruit_CharLCD import Adafruit_CharLCD
-from Adafruit_MCP230xx import MCP230XX_GPIO
+import Adafruit_CharLCD as LCD
+import Adafruit_GPIO.MCP230xx as MCP
 import Adafruit_GPIO as GPIO
 
-
-mcpbus = 1            # Note you need to change the bus number to 0 if running on a r$
-address = 0x20        # I2C address of the MCP230xx chip.
-gpio_count = 8        # Number of GPIOs exposed by the MCP230xx chip, should be 8 or $
-
-mcp = MCP230XX_GPIO(mcpbus, address, gpio_count)
+mcp =  MCP.MCP23008()
 
 gpio = GPIO.get_platform_gpio()
 
@@ -39,15 +34,15 @@ bn            = [UP, DOWN, LEFT, RIGHT, SELECT]
 
 
 # Constants:
-DEBUG         = False
+DEBUG         = True
 RGB_LCD       = False       # Set to 'True' if using color backlit LCD
-HALT_ON_EXIT  = True        # Set to 'True' to shut down system when exiting
-MAX_FPS       = 8           # Limit screen refresh rate for legibility
+HALT_ON_EXIT  = False        # Set to 'True' to shut down system when exiting
+MAX_FPS       = 6           # Limit screen refresh rate for legibility
 VOL_MIN       = -20
 VOL_MAX       =  15
 VOL_DEFAULT   = 0
 SHUTDOWN_TIME = 3.0         # Time (seconds) to hold select button for shut down
-PICKLEFILE    = '/home/chip/.config/pianobar/state.p'
+PICKLEFILE    = '/root/.config/pianobar/state.p'
 
 # Global state:
 volCur        = VOL_MIN        # Current volume
@@ -112,6 +107,8 @@ charSevenBitmaps = [
 
 
 def clean_exit():              # Exit handler tries to leave LCD in a nice state.
+    if DEBUG:
+        print "cleanExit"
 
     for i in range(len(bn)):
         gpio.remove_event_detect(bn[i])
@@ -119,13 +116,15 @@ def clean_exit():              # Exit handler tries to leave LCD in a nice state
     gpio.cleanup()
     lcd.clear()
     time.sleep(1)
-    lcd.backlight(lcd.ON)
+    lcd.set_backlight(1)
 
     if pianobar is not None:
         pianobar.kill(0)
 
 
 def shutdown_menu():
+    if DEBUG:
+        print "ShutDown"
 
     battery_status()
 
@@ -192,13 +191,15 @@ def battery_status():
     bStat = subprocess.check_output("sudo sh /home/chip/battery.sh", shell=True).strip('\n')
     lcd.clear()
     lcd.message('Battery Level'.center(16, ' '))
-    lcd.setCursor(0, 1)
+    lcd.set_cursor(0, 1)
     lcd.message(('= ' + bStat + '% Full').center(16, ' '))
     time.sleep(3)
 
 
 def marquee(s, x, y, xWrap):                 # Draws song title or artist/album marquee at given position.
-    lcd.setCursor(0, y)                      # Returns new position to avoid global uglies.
+    if DEBUG:
+        print "marquee"
+    lcd.set_cursor(0, y)                      # Returns new position to avoid global uglies.
     if x > 0:                                # Initially scrolls in from right edge
         lcd.message(' ' * x + s[0:16-x])
     else:                                    # Then scrolls w/wrap indefinitely
@@ -209,27 +210,33 @@ def marquee(s, x, y, xWrap):                 # Draws song title or artist/album 
 
 
 def draw_playing():
-    lcd.createChar(7, charSevenBitmaps[0])
-    lcd.setCursor(0, 1)
+    if DEBUG:
+        print "drawPlaying"
+    lcd.create_char(7, charSevenBitmaps[0])
+    lcd.set_cursor(0, 1)
     lcd.message('\x07 Playing'.center(16, ' '))
     return time.time()
 
 
 def draw_paused():
-    lcd.createChar(7, charSevenBitmaps[1])
-    lcd.setCursor(0, 1)
+    if DEBUG:
+        print "drawPaused"
+    lcd.create_char(7, charSevenBitmaps[1])
+    lcd.set_cursor(0, 1)
     lcd.message('\x07 Paused'.center(16, ' '))
 
 
 def draw_next_track():
     lcd.clear()
-    lcd.createChar(7, charSevenBitmaps[2])
-    lcd.setCursor(0, 1)
+    lcd.create_char(7, charSevenBitmaps[2])
+    lcd.set_cursor(0, 1)
     lcd.message('\x07 Next track... ')
     time.sleep(1)
 
 
 def draw_stations(stationNew, listTop, xStation, staBtnTime):   # Draw station menu
+    if DEBUG:
+        print "drawStations"
     last = len(stationList)                                    # (overwrites fulls screen to facilitate scrolling)
     if last > 2:
         last = 2  # Limit stations displayed
@@ -263,15 +270,17 @@ def draw_stations(stationNew, listTop, xStation, staBtnTime):   # Draw station m
         if line == last:
             break
         msg  += '\n'  # Not last line - add newline
-    lcd.setCursor(0, 0)
+    lcd.set_cursor(0, 0)
     lcd.message(msg)
     return ret
 
 
 def get_stations():
+    if DEBUG:
+        print "getStations"
     lcd.clear()
     lcd.message('Retrieving\nstation list...')
-    pianobar.expect('Select station: ', timeout=30)   # 'before' is now string of stations I believe
+    pianobar.expect('Select station: ', timeout=20)   # 'before' is now string of stations I believe
     a     = pianobar.before.splitlines()              # break up into separate lines
     names = []
     ids   = []
@@ -304,26 +313,30 @@ def get_stations():
 def btn_up_pressed(self):
     global btnUp
     btnUp = True
+    print "UP"
 
 
 def btn_down_pressed(self):
     global btnDown
     btnDown = True
+    print "DOWN"
 
 
 def btn_left_pressed(self):
     global btnLeft
     btnLeft = True
+    print "LEFT"
 
 
 def btn_right_pressed(self):
     global btnRight
     btnRight = True
+    print "RIGHT"
 
 
 def btn_select_pressed(self):
-    #global btnSel
-    #btnSel = True
+    global btnSel
+    btnSel = True
     print "SELECT"
 
 
@@ -337,16 +350,15 @@ atexit.register(clean_exit)
 for i in range(len(bn)):
     gpio.setup( bn[i], GPIO.IN)
 
-gpio.add_event_detect(UP, GPIO.FALLING, btn_up_pressed, 15)
-gpio.add_event_detect(DOWN, GPIO.FALLING, btn_down_pressed, 15)
-gpio.add_event_detect(LEFT, GPIO.FALLING, btn_left_pressed, 15)
-gpio.add_event_detect(RIGHT, GPIO.FALLING, btn_right_pressed, 15)
-gpio.add_event_detect(SELECT, GPIO.FALLING, btn_select_pressed, 15)
+gpio.add_event_detect(UP, GPIO.FALLING, btn_up_pressed, 350)
+gpio.add_event_detect(DOWN, GPIO.FALLING, btn_down_pressed, 350)
+gpio.add_event_detect(LEFT, GPIO.FALLING, btn_left_pressed, 350)
+gpio.add_event_detect(RIGHT, GPIO.FALLING, btn_right_pressed, 350)
+gpio.add_event_detect(SELECT, GPIO.FALLING, btn_select_pressed, 350)
 
 # Initialize I2C LCD for CHIP ( using I2C as no python SPI library is available yet for CHIP. It is slow)
-lcd = Adafruit_CharLCD(pin_rs=1, pin_e=2, pins_db=[3,4,5,6], GPIO=mcp, pin_b=7)
-lcd.begin(16, 2)
-lcd.backlight(lcd.ON)
+lcd = LCD.Adafruit_CharLCD(rs=1, en=2, d4=3, d5=4, d6=5, d7=6, cols=16, lines=2, gpio=mcp, backlight=7)
+lcd.set_backlight(0)
 time.sleep(0.1)
 
 # Initial welcome message
@@ -365,10 +377,10 @@ for i in range(6):
     bits = (255 << (5 - i)) & 0x1f
     for j in range(8):
         bitmap.append(bits)
-    lcd.createChar(i, bitmap)
+    lcd.create_char(i, bitmap)
 
 # Create up/down icon (char 6)
-lcd.createChar(6,
+lcd.create_char(6,
   [0b00100,
    0b01110,
    0b11111,
@@ -379,16 +391,20 @@ lcd.createChar(6,
    0b00100])
 
 # By default, char 7 is loaded in 'pause' state
-lcd.createChar(7, charSevenBitmaps[1])
+lcd.create_char(7, charSevenBitmaps[1])
 
 # Get last-used volume and station name from pickle file
 try:
     f = open(PICKLEFILE, 'rb')
+    if DEBUG:
+        print "pickOpen"
     v = pickle.load(f)
     f.close()
     volNew         = v[0]
     defaultStation = v[1]
 except:
+    if DEBUG:
+        print "pickNOTopened"
     defaultStation = None
 
 # Show IP address (if network is available).  System might be freshly
@@ -418,7 +434,16 @@ while True:
 print('Spawning pianobar...')
 pianobar = pexpect.spawn('pianobar')
 print('Receiving station list...')
-pianobar.expect('Get stations... Ok.\r\n', timeout=60)
+tout = pianobar.expect('Get stations... Ok.\r\n', timeout=120) #tout is timeout return
+if tout == 1: #Timeout error handler
+    lcd.clear()
+    lcd.message('Station Timeout')
+    time.sleep(5)
+    shutdown_menu()
+if tout == 0: #No timeout, just a message to show on the LCD for a few seconds
+    lcd.clear()
+    lcd.message('Station Success!')
+    time.sleep(5)
 stationList, stationIDs = get_stations()
 try:    # Use station name from last session
     stationNum = stationList.index(defaultStation)
@@ -437,17 +462,21 @@ pianobar.sendline(stationIDs[stationNum])
 lastTime = 0
 
 pattern_list = pianobar.compile_pattern_list(['SONG: ', 'STATION: ', 'TIME: '])
+if DEBUG:
+    print pattern_list
 
 while pianobar.isalive():
 
     # Process all pending pianobar output
     while True:
-
+        time.sleep(.1)
         try:
-            x = pianobar.expect(pattern_list, timeout=0)
+            x = pianobar.expect(pattern_list, timeout=10)
+            if DEBUG:
+                print x
             if x == 0:
-                songTitle  = ''
-                songTitleNoScroll  = ''
+                songTitle = ''
+                songTitleNoScroll = ''
                 artistNoScroll = ''
                 songInfo   = ''
                 xTitle     = 16
@@ -493,17 +522,31 @@ while pianobar.isalive():
                     f.close()
                 except:
                     pass
+                break
         except pexpect.EOF:
+            if DEBUG:
+                print "EOF"
+            print(str(pianobar))
             break
         except pexpect.TIMEOUT:
+            if DEBUG:
+                print "TIMEOUT"
+            print(str(pianobar))
             break
+    time.sleep(.1)
 
-    # Certain button actions occur regardless of current mode.
+            # Certain button actions occur regardless of current mode.
     # Holding the select button (for shutdown) is a big one.
     if btnSel:
+        if DEBUG:
+            print "btnSel"
         btnSel = False
         t = time.time()                              # Start time of button press
-        while 0 == gpio.input(SELECT):               # Wait for button release
+        while 0 == gpio.input(SELECT):
+            if btnSel:
+                if DEBUG:
+                    print "whileSELECT"
+            # Wait for button release
             if (time.time() - t) >= SHUTDOWN_TIME:   # Extended hold?
                 shutdown_menu()                       # We're outta here
 
@@ -544,7 +587,7 @@ while pianobar.isalive():
             # Entering station selection menu.  Don't return to volume
             # select, regardless of outcome, just return to normal play.
             pianobar.send('s')
-            lcd.createChar(7, charSevenBitmaps[0])
+            lcd.create_char(7, charSevenBitmaps[0])
             volSet     = False
             cursorY    = 0   # Cursor position on screen
             stationNew = 0   # Cursor position in list
@@ -587,7 +630,7 @@ while pianobar.isalive():
             xStation = draw_stations(stationNew, listTop, 0, staBtnTime)
         else:
             if volSet is False:          # !Not in station menu
-                lcd.setCursor(0, 1)      # Just entering volume-setting mode; init display
+                lcd.set_cursor(0, 1)      # Just entering volume-setting mode; init display
                 volCurI = int((volCur - VOL_MIN) + 0.5)
                 n = int(volCurI / 5)
                 s = (chr(6) + ' Volume ' +
@@ -613,6 +656,8 @@ while pianobar.isalive():
     # Other logic specific to unpressed buttons:
     else:
         if staSel:
+            if DEBUG:
+                print "staSEL"
             # In station menu, X-scroll active station name if long
             if len(stationList[stationNew]) > 15:
                 xStation = draw_stations(stationNew, listTop, xStation, staBtnTime)
@@ -627,12 +672,16 @@ while pianobar.isalive():
 
     # Various 'always on' logic independent of buttons
     if not staSel:  # Play/pause/volume: draw upper line (song title)
+        if DEBUG:
+            print "notstaSEL"
         if songTitle is not None:
+            if DEBUG:
+                print "songnotnone"
             songTitleNoScroll = songTitleNoScroll.strip(' ')
             if len(songTitleNoScroll) > 16:
                 xTitle = marquee(songTitle, xTitle, 0, xTitleWrap)
             else:
-                lcd.setCursor(0, 0)
+                lcd.set_cursor(0, 0)
                 lcd.message(songTitleNoScroll.center(16, ' '))
 
         # Integerize current and new volume values
@@ -659,14 +708,23 @@ while pianobar.isalive():
                     x = int(volNewI / 5)
                     n = int(volCurI / 5) - x
                     s = chr(volNewI % 5) + chr(0) * n
-                lcd.setCursor(x + 9, 1)
+                lcd.set_cursor(x + 9, 1)
                 lcd.message(s)
         elif paused is not True:
+            if DEBUG:
+                print "pausedNOTtrue"
             if (time.time() - playMsgTime) >= 3:
                 # Display artist/album (rather than 'Playing')
                 artistNoScroll = artistNoScroll.strip(' ')
                 if len(artistNoScroll) > 16:
                     xInfo = marquee(songInfo, xInfo, 1, xInfoWrap)
                 else:
-                    lcd.setCursor(0, 1)
+                    lcd.set_cursor(0, 1)
                     lcd.message(artistNoScroll.center(16, ' '))
+    time.sleep(.1)
+
+    # Throttle frame rate, keeps screen legible
+    while True:
+        t = time.time()
+        if (t - lastTime) > (1.0 / MAX_FPS): break
+    lastTime = t
