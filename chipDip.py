@@ -1,39 +1,36 @@
 #! /usr/bin/python
-
-# UI wrapper for 'pianobar' client for Pandora, using Adafruit 16x2 LCD
-# Pi Plate for Raspberry Pi.
-# Written by Adafruit Industries.  MIT license.
 #
-# Required hardware includes any internet-connected Raspberry Pi
-# system, any of the Adafruit 16x2 LCD w/Keypad Pi Plate varieties
-# and either headphones or amplified speakers.
-# Required software includes the Adafruit Raspberry Pi Python Code
-# repository, pexpect library and pianobar.  A Pandora account is
-# also necessary.
+# C.H.I.P Dip is a modified version of Adafruits PythonWiFiRadio
+# https://github.com/adafruit/Python-WiFi-Radio app written for chip
+# the $9 computer getchip.com.
 #
-# Resources:
-# http://www.adafruit.com/products/1109 RGB Positive 16x2 LCD + Keypad
-# http://www.adafruit.com/products/1110 RGB Negative 16x2 LCD + Keypad
-# http://www.adafruit.com/products/1115 Blue & White 16x2 LCD + Keypad
+#
+# This code is set up for use of Adafruits i2c/spi LCD backpack
+# https://www.adafruit.com/products/292 connected via i2c to chips
+# two wire interface. Pins "TWI1-SDA" and "TWI1-SCK".
+#
+#
+# Because I am not using the Pi Plate this code was originally written for I chose to
+# use chips "XIO" gpio for button input.
+#
+# To use the gpio you need both the CHIP_IO library from xtacocorex https://github.com/xtacocorex/CHIP_IO
+# and his modified Adafruit_GPIO library https://github.com/xtacocorex/Adafruit_Python_GPIO
+#
 
 import atexit, pexpect, pickle, socket, time, os, subprocess
 import Adafruit_CharLCD as LCD
 import Adafruit_GPIO.MCP230xx as MCP
 import Adafruit_GPIO as GPIO
 
-mcp =  MCP.MCP23008()
-
-gpio = GPIO.get_platform_gpio()
-
-UP	          = "XIO-P3"
+# Constants:
+mcp           = MCP.MCP23008()
+gpio          = GPIO.get_platform_gpio()
+UP            = "XIO-P3"
 DOWN	      = "XIO-P4"
 LEFT	      = "XIO-P5"
 RIGHT	      = "XIO-P6"
 SELECT 	      = "XIO-P7"
 bn            = [UP, DOWN, LEFT, RIGHT, SELECT]
-
-
-# Constants:
 DEBUG         = True
 RGB_LCD       = False       # Set to 'True' if using color backlit LCD
 HALT_ON_EXIT  = False        # Set to 'True' to shut down system when exiting
@@ -343,7 +340,7 @@ def btn_select_pressed(self):
 # --------------------------------------------------------------------------
 # Initialization
 # --------------------------------------------------------------------------
-
+# In case of any errors we need to cleanup the gpio and lcd. Also if closed by ctrl-c.
 atexit.register(clean_exit)
 
 # Initialize GPIO for CHIP
@@ -366,10 +363,9 @@ lcd.clear()
 lcd.message('     C.H.I.P.\n       Dip')
 time.sleep(4)
 lcd.clear()
-lcd.message('    PANDORA\n Internet Radio')
+lcd.message('    PIANOBAR\n Internet Radio')
 time.sleep(4)
 lcd.clear()
-
 
 # Create volume bargraph custom characters (chars 0-5):
 for i in range(6):
@@ -535,7 +531,7 @@ while pianobar.isalive():
             break
     time.sleep(.1)
 
-            # Certain button actions occur regardless of current mode.
+    # Certain button actions occur regardless of current mode.
     # Holding the select button (for shutdown) is a big one.
     if btnSel:
         if DEBUG:
