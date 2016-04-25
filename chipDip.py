@@ -1,14 +1,13 @@
 #! /usr/bin/python
+
 #
 # C.H.I.P Dip is a modified version of Adafruits PythonWiFiRadio
 # https://github.com/adafruit/Python-WiFi-Radio app written for chip
 # the $9 computer getchip.com.
 #
-#
-# This code is set up for use of Adafruits i2c/spi LCD backpack
+# This code is set up for use of Adafruits i2c/spi LCD backpack with a 16x2 LCD
 # https://www.adafruit.com/products/292 connected via i2c to chips
 # two wire interface. Pins "TWI1-SDA" and "TWI1-SCK".
-#
 #
 # Because I am not using the Pi Plate this code was originally written for I chose to
 # use chips "XIO" gpio for button input.
@@ -27,20 +26,20 @@ mcp           = MCP.MCP23008()
 gpio          = GPIO.get_platform_gpio()
 
 # Constants:
+DEBUG         = False
+RGB_LCD       = False       # Set to 'True' if using color backlit LCD
+HALT_ON_EXIT  = False        # Set to 'True' to shut down system when exiting
+MAX_FPS       = 4           # Limit screen refresh rate for legibility
+VOL_MIN       = -20
+VOL_MAX       =  15
+VOL_DEFAULT   = 0
+SHUTDOWN_TIME = 3.0         # Time (seconds) to hold select button for shut down
 UP            = "XIO-P3"
 DOWN	      = "XIO-P4"
 LEFT	      = "XIO-P5"
 RIGHT	      = "XIO-P6"
 SELECT 	      = "XIO-P7"
 BUTTONS       = [UP, DOWN, LEFT, RIGHT, SELECT]
-DEBUG         = True
-RGB_LCD       = False       # Set to 'True' if using color backlit LCD
-HALT_ON_EXIT  = False        # Set to 'True' to shut down system when exiting
-MAX_FPS       = 6           # Limit screen refresh rate for legibility
-VOL_MIN       = -20
-VOL_MAX       =  15
-VOL_DEFAULT   = 0
-SHUTDOWN_TIME = 3.0         # Time (seconds) to hold select button for shut down
 PICKLEFILE    = '/root/.config/pianobar/state.p'
 
 # Global state:
@@ -100,14 +99,14 @@ charSevenBitmaps = [
    0b00000,
    0b00000]]
 
+
 # --------------------------------------------------------------------------
 # Functions
 # --------------------------------------------------------------------------
 
-
 def clean_exit():              # Exit handler tries to leave LCD in a nice state.
     if DEBUG:
-        print "cleanExit"
+        print('cleanExit')
 
     for i in range(len(BUTTONS)):
         gpio.remove_event_detect(BUTTONS[i])
@@ -123,7 +122,7 @@ def clean_exit():              # Exit handler tries to leave LCD in a nice state
 
 def shutdown_menu():
     if DEBUG:
-        print "ShutDown"
+        print('ShutDown')
 
     battery_status()
 
@@ -197,7 +196,7 @@ def battery_status():
 
 def marquee(s, x, y, xWrap):                 # Draws song title or artist/album marquee at given position.
     if DEBUG:
-        print "marquee"
+        print('marquee')
     lcd.set_cursor(0, y)                      # Returns new position to avoid global uglies.
     if x > 0:                                # Initially scrolls in from right edge
         lcd.message(' ' * x + s[0:16-x])
@@ -210,7 +209,7 @@ def marquee(s, x, y, xWrap):                 # Draws song title or artist/album 
 
 def draw_playing():
     if DEBUG:
-        print "drawPlaying"
+        print('drawPlaying')
     lcd.create_char(7, charSevenBitmaps[0])
     lcd.set_cursor(0, 1)
     lcd.message('\x07 Playing'.center(16, ' '))
@@ -219,7 +218,7 @@ def draw_playing():
 
 def draw_paused():
     if DEBUG:
-        print "drawPaused"
+        print('drawPaused')
     lcd.create_char(7, charSevenBitmaps[1])
     lcd.set_cursor(0, 1)
     lcd.message('\x07 Paused'.center(16, ' '))
@@ -235,7 +234,7 @@ def draw_next_track():
 
 def draw_stations(stationNew, listTop, xStation, staBtnTime):   # Draw station menu
     if DEBUG:
-        print "drawStations"
+        print('drawStations')
     last = len(stationList)                                    # (overwrites fulls screen to facilitate scrolling)
     if last > 2:
         last = 2  # Limit stations displayed
@@ -259,16 +258,16 @@ def draw_stations(stationNew, listTop, xStation, staBtnTime):   # Draw station m
             else:  # Short station name - pad w/spaces if needed
                 s2 = s[0:15]
                 if sLen < 15: s2 += ' ' * (15 - sLen)
-        else: # Not currently-selected station
+        else:  # Not currently-selected station
             msg += ' '   # No cursor
             s2 = s[0:15]  # Clip or pad name to 15 chars
             if sLen < 15:
                 s2 += ' ' * (15 - sLen)
-        msg  += s2  # Add station name to output message
+        msg += s2  # Add station name to output message
         line += 1
         if line == last:
             break
-        msg  += '\n'  # Not last line - add newline
+        msg += '\n'  # Not last line - add newline
     lcd.set_cursor(0, 0)
     lcd.message(msg)
     return ret
@@ -276,7 +275,7 @@ def draw_stations(stationNew, listTop, xStation, staBtnTime):   # Draw station m
 
 def get_stations():
     if DEBUG:
-        print "getStations"
+        print('getStations')
     lcd.clear()
     lcd.message('Retrieving\nstation list...')
     pianobar.expect('Select station: ', timeout=20)   # 'before' is now string of stations I believe
@@ -309,39 +308,49 @@ def get_stations():
     return names, ids
 
 
+# --------------------------------------------------------------------------
+# gpio callback functions
+# --------------------------------------------------------------------------
+
 def btn_up_pressed(self):
     global btnUp
     btnUp = True
-    print "UP"
+    if DEBUG:
+        print('UP')
 
 
 def btn_down_pressed(self):
     global btnDown
     btnDown = True
-    print "DOWN"
+    if DEBUG:
+        print('DOWN')
 
 
 def btn_left_pressed(self):
     global btnLeft
     btnLeft = True
-    print "LEFT"
+    if DEBUG:
+        print('LEFT')
 
 
 def btn_right_pressed(self):
     global btnRight
     btnRight = True
-    print "RIGHT"
+    if DEBUG:
+        print('RIGHT')
 
 
 def btn_select_pressed(self):
     global btnSel
     btnSel = True
-    print "SELECT"
+    if DEBUG:
+        print('SELECT')
 
 
 # --------------------------------------------------------------------------
 # Initialization
 # --------------------------------------------------------------------------
+
 # In case of any errors we need to cleanup the gpio and lcd. Also if closed by ctrl-c.
 atexit.register(clean_exit)
 
@@ -355,7 +364,7 @@ gpio.add_event_detect(LEFT, GPIO.FALLING, btn_left_pressed, 350)
 gpio.add_event_detect(RIGHT, GPIO.FALLING, btn_right_pressed, 350)
 gpio.add_event_detect(SELECT, GPIO.FALLING, btn_select_pressed, 350)
 
-# Initialize I2C LCD for CHIP ( using I2C as no python SPI library is available yet for CHIP. It is slow)
+# Initialize I2C LCD for CHIP
 lcd = LCD.Adafruit_CharLCD(rs=1, en=2, d4=3, d5=4, d6=5, d7=6, cols=16, lines=2, gpio=mcp, backlight=7)
 lcd.set_backlight(0)
 time.sleep(0.1)
@@ -363,10 +372,10 @@ time.sleep(0.1)
 # Initial welcome message
 lcd.clear()
 lcd.message('     C.H.I.P.\n       Dip')
-time.sleep(4)
+time.sleep(3)
 lcd.clear()
 lcd.message('    PIANOBAR\n Internet Radio')
-time.sleep(4)
+time.sleep(3)
 lcd.clear()
 
 # Create volume bargraph custom characters (chars 0-5):
@@ -395,14 +404,14 @@ lcd.create_char(7, charSevenBitmaps[1])
 try:
     f = open(PICKLEFILE, 'rb')
     if DEBUG:
-        print "pickOpen"
+        print('pickOpen')
     v = pickle.load(f)
     f.close()
     volNew         = v[0]
     defaultStation = v[1]
 except:
     if DEBUG:
-        print "pickNOTopened"
+        print('pickNOTopened')
     defaultStation = None
 
 # Show IP address (if network is available).  System might be freshly
@@ -423,7 +432,7 @@ while True:
         if RGB_LCD:
             lcd.backlight(lcd.GREEN)
         lcd.message('My IP address is\n' + s.getsockname()[0])
-        time.sleep(5)
+        time.sleep(3)
         break         # Success -- let's hear some music!
     except:
         time.sleep(1)  # Pause a moment, keep trying
@@ -441,13 +450,13 @@ if tout == 1: #Timeout error handler
 if tout == 0: #No timeout, just a message to show on the LCD for a few seconds
     lcd.clear()
     lcd.message('Station Success!')
-    time.sleep(5)
+    time.sleep(3)
 stationList, stationIDs = get_stations()
 try:    # Use station name from last session
     stationNum = stationList.index(defaultStation)
 except:  # Use first station in list
     stationNum = 0
-print 'Selecting station ' + stationIDs[stationNum]
+print('Selecting station ' + stationIDs[stationNum])
 pianobar.sendline(stationIDs[stationNum])
 
 
@@ -460,18 +469,14 @@ pianobar.sendline(stationIDs[stationNum])
 lastTime = 0
 
 pattern_list = pianobar.compile_pattern_list(['SONG: ', 'STATION: ', 'TIME: '])
-if DEBUG:
-    print pattern_list
 
 while pianobar.isalive():
 
     # Process all pending pianobar output
     while True:
-        time.sleep(.1)
+        time.sleep(0.1)
         try:
-            x = pianobar.expect(pattern_list, timeout=10)
-            if DEBUG:
-                print x
+            x = pianobar.expect(pattern_list, timeout=2)
             if x == 0:
                 songTitle = ''
                 songTitleNoScroll = ''
@@ -483,7 +488,7 @@ while pianobar.isalive():
                 xInfoWrap  = 0
                 x = pianobar.expect(' \| ')
                 if x == 0:  # Title | Artist | Album
-                    print 'Song: "{}"'.format(pianobar.before)
+                    print('Song: "{}"'.format(pianobar.before))
                     s = pianobar.before + '    '
                     songTitleNoScroll = s
                     n = len(s)
@@ -492,11 +497,11 @@ while pianobar.isalive():
                     songTitle = s * (1 + (16 / n)) + s[0:16]
                     x = pianobar.expect(' \| ')
                     if x == 0:
-                        print 'Artist: "{}"'.format(pianobar.before)
+                        print('Artist: "{}"'.format(pianobar.before))
                         artist = pianobar.before
                         x = pianobar.expect('\r\n')
                         if x == 0:
-                            print 'Album: "{}"'.format(pianobar.before)
+                            print('Album: "{}"'.format(pianobar.before))
                             s = artist
                             artistNoScroll = s
                             n = len(s)
@@ -506,12 +511,13 @@ while pianobar.isalive():
             elif x == 1:
                 x = pianobar.expect(' \| ')
                 if x == 0:
-                    print 'Station: "{}"'.format(pianobar.before)
+                    print('Station: "{}"'.format(pianobar.before))
             elif x == 2:
                 # Time doesn't include newline - prints over itself.
                 x = pianobar.expect('\r', timeout=1)
                 if x == 0:
-                    print 'Time: {}'.format(pianobar.before)
+                    if DEBUG:
+                        print('Time: {}'.format(pianobar.before))
                 # Periodically dump state (volume and station name)
                 # to pickle file so it's remembered between each run.
                 try:
@@ -523,27 +529,26 @@ while pianobar.isalive():
                 break
         except pexpect.EOF:
             if DEBUG:
-                print "EOF"
-            print(str(pianobar))
+                print('EOF')
+                print(str(pianobar))
             break
         except pexpect.TIMEOUT:
             if DEBUG:
-                print "TIMEOUT"
-            print(str(pianobar))
+                print('TIMEOUT')
+                print(str(pianobar))
             break
-    time.sleep(.1)
 
     # Certain button actions occur regardless of current mode.
     # Holding the select button (for shutdown) is a big one.
     if btnSel:
         if DEBUG:
-            print "btnSel"
+            print('btnSel')
         btnSel = False
         t = time.time()                              # Start time of button press
         while 0 == gpio.input(SELECT):
             if btnSel:
                 if DEBUG:
-                    print "whileSELECT"
+                    print('whileSELECT')
             # Wait for button release
             if (time.time() - t) >= SHUTDOWN_TIME:   # Extended hold?
                 shutdown_menu()                       # We're outta here
@@ -598,7 +603,7 @@ while pianobar.isalive():
         else:
             # Just exited station menu with selection - go play.
             stationNum = stationNew # Make menu selection permanent
-            print 'Selecting station: "{}"'.format(stationIDs[stationNum])
+            print('Selecting station: "{}"'.format(stationIDs[stationNum]))
             pianobar.sendline(stationIDs[stationNum])
             paused = False
 
@@ -655,7 +660,7 @@ while pianobar.isalive():
     else:
         if staSel:
             if DEBUG:
-                print "staSEL"
+                print('staSEL')
             # In station menu, X-scroll active station name if long
             if len(stationList[stationNew]) > 15:
                 xStation = draw_stations(stationNew, listTop, xStation, staBtnTime)
@@ -671,10 +676,10 @@ while pianobar.isalive():
     # Various 'always on' logic independent of buttons
     if not staSel:  # Play/pause/volume: draw upper line (song title)
         if DEBUG:
-            print "notstaSEL"
+            print('notstaSEL')
         if songTitle is not None:
             if DEBUG:
-                print "songnotnone"
+                print('songNOTnone')
             songTitleNoScroll = songTitleNoScroll.strip(' ')
             if len(songTitleNoScroll) > 16:
                 xTitle = marquee(songTitle, xTitle, 0, xTitleWrap)
@@ -710,7 +715,7 @@ while pianobar.isalive():
                 lcd.message(s)
         elif paused is not True:
             if DEBUG:
-                print "pausedNOTtrue"
+                print('pausedNOTtrue')
             if (time.time() - playMsgTime) >= 3:
                 # Display artist/album (rather than 'Playing')
                 artistNoScroll = artistNoScroll.strip(' ')
@@ -719,10 +724,10 @@ while pianobar.isalive():
                 else:
                     lcd.set_cursor(0, 1)
                     lcd.message(artistNoScroll.center(16, ' '))
-    time.sleep(.1)
 
     # Throttle frame rate, keeps screen legible
     while True:
         t = time.time()
-        if (t - lastTime) > (1.0 / MAX_FPS): break
+        if (t - lastTime) > (1.0 / MAX_FPS):
+            break
     lastTime = t
