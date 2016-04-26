@@ -1,6 +1,6 @@
  #! /usr/bin/python
 
-#
+
 # C.H.I.P Dip is a modified version of Adafruits PythonWiFiRadio
 # https://github.com/adafruit/Python-WiFi-Radio app written for chip
 # the $9 computer getchip.com.
@@ -14,33 +14,32 @@
 #
 # To use the gpio you need both the CHIP_IO library from xtacocorex https://github.com/xtacocorex/CHIP_IO
 # and his modified Adafruit_GPIO library https://github.com/xtacocorex/Adafruit_Python_GPIO
-#
+
 
 import atexit, pexpect, pickle, socket, time, os, subprocess
 import Adafruit_CharLCD as LCD
 import Adafruit_GPIO.MCP230xx as MCP
 import Adafruit_GPIO as GPIO
 
-
 mcp           = MCP.MCP23008()
 gpio          = GPIO.get_platform_gpio()
 
 # Constants:
-DEBUG         = True
-RGB_LCD       = False       # Set to 'True' if using color backlit LCD
-HALT_ON_EXIT  = False       # Set to 'True' to shut down system when exiting
-MAX_FPS       = 4           # Limit screen refresh rate for legibility
+DEBUG         = False
+RGB_LCD       = False          # Set to 'True' if using color backlit LCD
+HALT_ON_EXIT  = False          # Set to 'True' to shut down system when exiting
+MAX_FPS       = 4              # Limit screen refresh rate for legibility
 VOL_MIN       = -20
 VOL_MAX       = 15
 VOL_DEFAULT   = 0
-LCD_ON_TIME   = 15          # Minuets for the LCD backlight to stay on. Push any button to wake.
-SHUTDOWN_TIME = 3.0         # Time (seconds) to hold select button for shut down
+LCD_ON_TIME   = 10             # Minuets for the LCD backlight to stay on. Push any button to wake.
+SHUTDOWN_TIME = 3.0            # Time (seconds) to hold select button for shut down
 UP            = "XIO-P3"
 DOWN	      = "XIO-P4"
 LEFT	      = "XIO-P5"
 RIGHT	      = "XIO-P6"
 SELECT 	      = "XIO-P7"
-BUTTONS       = [UP, DOWN, LEFT, RIGHT, SELECT]
+BUTTONS       = [UP, DOWN, LEFT, RIGHT, SELECT]  # List to make gpio initialization easier.
 PICKLEFILE    = '/root/.config/pianobar/state.p'
 
 # Global state:
@@ -72,9 +71,9 @@ btnDown       = False
 btnLeft       = False
 btnRight      = False
 btnSel        = False
-backLightON   = True
 
-# Char 7 gets reloaded for different modes.  These are the bitmaps:
+# Char 7 gets reloaded for different
+# modes. These are the bitmaps:
 charSevenBitmaps = [
   [0b10000,  # Play (also selected station)
    0b11000,
@@ -388,13 +387,16 @@ def btn_select_pressed(self):
 # Initialization
 # --------------------------------------------------------------------------
 
-# In case of any errors we need to cleanup the gpio and lcd. Also if closed by ctrl-c.
+# In case of any errors we need to cleanup
+# the gpio and lcd. Also if closed by ctrl-c.
 atexit.register(clean_exit)
 
 # Initialize GPIO for CHIP
 for i in range(len(BUTTONS)):
     gpio.setup(BUTTONS[i], GPIO.IN)
 
+# Set gpio event callbacks and debounce 350ms ( Seems to stop most edge
+# bounce without delaying subsequent button presses to much. )
 gpio.add_event_detect(UP, GPIO.FALLING, btn_up_pressed, 350)
 gpio.add_event_detect(DOWN, GPIO.FALLING, btn_down_pressed, 350)
 gpio.add_event_detect(LEFT, GPIO.FALLING, btn_left_pressed, 350)
@@ -410,10 +412,10 @@ time.sleep(0.1)
 # Initial welcome message
 lcd.clear()
 lcd.message('     C.H.I.P.\n       Dip')
-time.sleep(3)
+time.sleep(2.5)
 lcd.clear()
 lcd.message('    PIANOBAR\n Internet Radio')
-time.sleep(3)
+time.sleep(2.5)
 lcd.clear()
 
 # Create volume bargraph custom characters (chars 0-5):
@@ -469,8 +471,9 @@ while True:
         s.connect(('8.8.8.8', 0))
         if RGB_LCD:
             lcd.backlight(lcd.GREEN)
-        lcd.message('My IP address is\n' + s.getsockname()[0])
-        time.sleep(3)
+        lcd.clear()
+        lcd.message('My IP address is\n ' + s.getsockname()[0])
+        time.sleep(2.5)
         break         # Success -- let's hear some music!
     except:
         time.sleep(1)  # Pause a moment, keep trying
@@ -514,7 +517,7 @@ while pianobar.isalive():
     while True:
         time.sleep(0.1)
         try:
-            x = pianobar.expect(pattern_list, timeout=2)
+            x = pianobar.expect(pattern_list, timeout=1)
             if x == 0:
                 songTitle = ''
                 songTitleNoScroll = ''
@@ -564,6 +567,8 @@ while pianobar.isalive():
                     f.close()
                 except:
                     pass
+                # This break + changing the first pianobar.expect
+                # timeout to =1 !=0 solved many random crashes for me.
                 break
         except pexpect.EOF:
             if DEBUG:
@@ -772,6 +777,7 @@ while pianobar.isalive():
         t = time.time()
         if (t - timeLightON) >= (LCD_ON_TIME * 60):
             lcd.set_backlight(1)
+            backLightON = False
             if DEBUG:
                 print('backlight OFF')
 
