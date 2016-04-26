@@ -1,4 +1,4 @@
-#! /usr/bin/python
+ #! /usr/bin/python
 
 #
 # C.H.I.P Dip is a modified version of Adafruits PythonWiFiRadio
@@ -26,13 +26,14 @@ mcp           = MCP.MCP23008()
 gpio          = GPIO.get_platform_gpio()
 
 # Constants:
-DEBUG         = False
+DEBUG         = True
 RGB_LCD       = False       # Set to 'True' if using color backlit LCD
-HALT_ON_EXIT  = False        # Set to 'True' to shut down system when exiting
+HALT_ON_EXIT  = False       # Set to 'True' to shut down system when exiting
 MAX_FPS       = 4           # Limit screen refresh rate for legibility
 VOL_MIN       = -20
-VOL_MAX       =  15
+VOL_MAX       = 15
 VOL_DEFAULT   = 0
+LCD_ON_TIME   = 15          # Minuets for the LCD backlight to stay on. Push any button to wake.
 SHUTDOWN_TIME = 3.0         # Time (seconds) to hold select button for shut down
 UP            = "XIO-P3"
 DOWN	      = "XIO-P4"
@@ -71,6 +72,7 @@ btnDown       = False
 btnLeft       = False
 btnRight      = False
 btnSel        = False
+backLightON   = True
 
 # Char 7 gets reloaded for different modes.  These are the bitmaps:
 charSevenBitmaps = [
@@ -314,37 +316,72 @@ def get_stations():
 
 def btn_up_pressed(self):
     global btnUp
-    btnUp = True
-    if DEBUG:
-        print('UP')
+    global backLightON
+    global timeLightON
+    if not backLightON:
+        lcd.set_backlight(0)
+        backLightON = True
+        timeLightON = time.time()
+    else:
+        btnUp = True
+        if DEBUG:
+            print('UP')
 
 
 def btn_down_pressed(self):
     global btnDown
-    btnDown = True
-    if DEBUG:
-        print('DOWN')
+    global backLightON
+    global timeLightON
+    if not backLightON:
+        lcd.set_backlight(0)
+        backLightON = True
+        timeLightON = time.time()
+    else:
+        btnDown = True
+        if DEBUG:
+            print('DOWN')
 
 
 def btn_left_pressed(self):
     global btnLeft
-    btnLeft = True
-    if DEBUG:
-        print('LEFT')
+    global backLightON
+    global timeLightON
+    if not backLightON:
+        lcd.set_backlight(0)
+        backLightON = True
+        timeLightON = time.time()
+    else:
+        btnLeft = True
+        if DEBUG:
+            print('LEFT')
 
 
 def btn_right_pressed(self):
     global btnRight
-    btnRight = True
-    if DEBUG:
-        print('RIGHT')
+    global backLightON
+    global timeLightON
+    if not backLightON:
+        lcd.set_backlight(0)
+        backLightON = True
+        timeLightON = time.time()
+    else:
+        btnRight = True
+        if DEBUG:
+            print('RIGHT')
 
 
 def btn_select_pressed(self):
     global btnSel
-    btnSel = True
-    if DEBUG:
-        print('SELECT')
+    global backLightON
+    global timeLightON
+    if not backLightON:
+        lcd.set_backlight(0)
+        backLightON = True
+        timeLightON = time.time()
+    else:
+        btnSel = True
+        if DEBUG:
+            print('SELECT')
 
 
 # --------------------------------------------------------------------------
@@ -367,6 +404,7 @@ gpio.add_event_detect(SELECT, GPIO.FALLING, btn_select_pressed, 350)
 # Initialize I2C LCD for CHIP
 lcd = LCD.Adafruit_CharLCD(rs=1, en=2, d4=3, d5=4, d6=5, d7=6, cols=16, lines=2, gpio=mcp, backlight=7)
 lcd.set_backlight(0)
+timeLightON = time.time()
 time.sleep(0.1)
 
 # Initial welcome message
@@ -441,13 +479,13 @@ while True:
 print('Spawning pianobar...')
 pianobar = pexpect.spawn('pianobar')
 print('Receiving station list...')
-tout = pianobar.expect('Get stations... Ok.\r\n', timeout=120) #tout is timeout return
-if tout == 1: #Timeout error handler
+tout = pianobar.expect('Get stations... Ok.\r\n', timeout=120)  # tout is timeout return
+if tout == 1:  # Timeout error handler
     lcd.clear()
     lcd.message('Station Timeout')
     time.sleep(5)
     shutdown_menu()
-if tout == 0: #No timeout, just a message to show on the LCD for a few seconds
+if tout == 0:  # No timeout, just a message to show on the LCD for a few seconds
     lcd.clear()
     lcd.message('Station Success!')
     time.sleep(3)
@@ -544,13 +582,13 @@ while pianobar.isalive():
         if DEBUG:
             print('btnSel')
         btnSel = False
-        t = time.time()                              # Start time of button press
+        t = time.time()                               # Start time of button press
         while 0 == gpio.input(SELECT):
             if btnSel:
                 if DEBUG:
                     print('whileSELECT')
             # Wait for button release
-            if (time.time() - t) >= SHUTDOWN_TIME:   # Extended hold?
+            if (time.time() - t) >= SHUTDOWN_TIME:    # Extended hold?
                 shutdown_menu()                       # We're outta here
 
         # If tapped, different things in different modes...
@@ -558,13 +596,13 @@ while pianobar.isalive():
             pianobar.send('\n')      # Cancel station select
             staSel = False           # Cancel menu and return to
             if paused:
-                draw_paused()         # play or paused state
+                draw_paused()        # play or paused state
         else:                        # In play/pause state...
             volSet = False           # Exit volume-setting mode (if there)
             paused = not paused      # Toggle play/pause
             pianobar.send('p')       # Toggle pianobar play/pause
             if paused:
-                draw_paused()         # Display play/pause change
+                draw_paused()        # Display play/pause change
             else:
                 playMsgTime = draw_playing()
 
@@ -633,7 +671,7 @@ while pianobar.isalive():
             xStation = draw_stations(stationNew, listTop, 0, staBtnTime)
         else:
             if volSet is False:          # !Not in station menu
-                lcd.set_cursor(0, 1)      # Just entering volume-setting mode; init display
+                lcd.set_cursor(0, 1)     # Just entering volume-setting mode; init display
                 volCurI = int((volCur - VOL_MIN) + 0.5)
                 n = int(volCurI / 5)
                 s = (chr(6) + ' Volume ' +
@@ -724,6 +762,18 @@ while pianobar.isalive():
                 else:
                     lcd.set_cursor(0, 1)
                     lcd.message(artistNoScroll.center(16, ' '))
+
+    # Turn off the lcd backlight if inactive for specified time
+    if backLightON:
+        if DEBUG:
+            print('backlight' + str(backLightON))
+            print(str(timeLightON))
+            print(str(time.time()))
+        t = time.time()
+        if (t - timeLightON) >= (LCD_ON_TIME * 60):
+            lcd.set_backlight(1)
+            if DEBUG:
+                print('backlight OFF')
 
     # Throttle frame rate, keeps screen legible
     while True:
