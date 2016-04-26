@@ -70,6 +70,7 @@ btnDown       = False
 btnLeft       = False
 btnRight      = False
 btnSel        = False
+backLightON   = True
 
 # Char 7 gets reloaded for different
 # modes. These are the bitmaps:
@@ -766,6 +767,13 @@ while pianobar.isalive():
                 else:
                     lcd.set_cursor(0, 1)
                     lcd.message(artistNoScroll.center(16, ' '))
+        # Throttle frame rate, keeps screen legible - Nest in "if not staSel:"
+        # so that it won't throttle when in station menu for faster menu response.
+        while True:
+            t = time.time()
+            if (t - lastTime) > (1.0 / MAX_FPS):
+                break
+        lastTime = t
 
     # Turn off the lcd backlight if inactive for specified time
     if backLightON:
@@ -780,9 +788,4 @@ while pianobar.isalive():
             if DEBUG:
                 print('backlight OFF')
 
-    # Throttle frame rate, keeps screen legible
-    while True:
-        t = time.time()
-        if (t - lastTime) > (1.0 / MAX_FPS):
-            break
-    lastTime = t
+
