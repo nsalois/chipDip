@@ -125,7 +125,7 @@ def shutdown_menu():
     if DEBUG:
         print('ShutDown')
 
-    battery_status()
+    battery_fuel_gauge()
 
     options = []
     options.append('Exit Pandora')
@@ -164,9 +164,9 @@ def shutdown_menu():
             lcd.message('Use LEFT, & U/D\n' + options[choice])
 
         if btnLeft:
-            if choice == 0:  # Option to exit Pandora
+            if choice == 0:  # Option to exit Pianobar
                 lcd.clear()
-                lcd.message('Exiting Pandora')
+                lcd.message('Exiting Pianobar')
                 time.sleep(0.5)
                 clean_exit()
                 exit(0)
@@ -186,12 +186,12 @@ def shutdown_menu():
                 os.system("sudo shutdown now")
 
 
-def battery_status():
-    bStat = subprocess.check_output("sudo sh /home/chip/battery.sh", shell=True).strip('\n')
+def battery_fuel_gauge():
+    b = subprocess.check_output("sudo sh /home/chip/fuel_gauge.sh", shell=True).strip('\n')
     lcd.clear()
     lcd.message('Battery Level'.center(16, ' '))
     lcd.set_cursor(0, 1)
-    lcd.message(('= ' + bStat + '% Full').center(16, ' '))
+    lcd.message(('= ' + b + '% Full').center(16, ' '))
     time.sleep(3)
 
 
