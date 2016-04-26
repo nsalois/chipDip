@@ -1,6 +1,5 @@
  #! /usr/bin/python
 
-
 # C.H.I.P Dip is a modified version of Adafruits PythonWiFiRadio
 # https://github.com/adafruit/Python-WiFi-Radio app written for chip
 # the $9 computer getchip.com.
